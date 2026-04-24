@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Super Cube Bros</title>
+    <!-- Three.js for 3D/2D Hybrid Rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Anime.js for smooth UI and Object animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <!-- Tailwind CSS for modern, responsive UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: #60a5fa; 
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            touch-action: none;
+        }
+        #game-canvas { display: block; width: 100vw; height: 100vh; }
+        
+        .ui-layer {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .interactive { pointer-events: auto; }
+        
+        .pixel-text {
+            font-family: 'monospace';
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        /* Prevent text selection during gameplay */
+        .no-select {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+    </style>
+</head>
+<body class="no-select">
+
+<div id="game-canvas"></div>
+
+<div class="ui-layer">
+    <!-- HUD -->
+    <div id="hud" class="flex justify-between items-start p-6 text-white font-bold opacity-0 hidden">
+        <div class="bg-black/20 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-xl">
+            <div class="text-xs uppercase tracking-widest text-blue-200 mb-1">Player</div>
+            <div class="text-xl" id="hud-name">---</div>
+        </div>
+        <div class="text-right bg-black/20 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-xl">
+            <div class="text-xs uppercase tracking-widest text-yellow-200 mb-1">Score</div>
+            <div class="text-4xl text-yellow-400 font-black" id="hud-score">0000</div>
+            <div class="text-[10px] text-white/50 mt-1" id="hud-highscore">BEST: 0</div>
+        </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="interactive absolute inset-0 flex items-center justify-center bg-blue-600/40 backdrop-blur-xl z-50">
+        <div class="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center border-t-8 border-blue-500">
+            <h1 class="text-5xl font-black text-slate-800 mb-2 tracking-tighter">CUBE BROS</h1>
+            <p class="text-blue-500 font-bold text-sm tracking-widest mb-8">3D PLATFORMER ADVENTURE</p>
+            
+            <div class="mb-6 text-left">
+                <label class="block text-slate-400 font-bold mb-2 text-[10px] uppercase tracking-widest" for="player-name">
+                    Identity
+                </label>
+                <input class="w-full px-5 py-4 rounded-2xl bg-slate-100 border-2 border-transparent focus:border-blue-500 focus:bg-white focus:outline-none text-lg font-bold text-slate-800 transition-all" 
+                       id="player-name" type="text" placeholder="Your Name" maxlength="12">
+            </div>
+            
+            <button id="btn-start" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-5 rounded-2xl shadow-lg shadow-blue-200 transform hover:-translate-y-1 transition-all active:scale-95 text-xl uppercase tracking-widest">
+                Start Game
+            </button>
+            
+            <div class="mt-8 flex justify-center gap-4 text-slate-400">
+                <div class="flex flex-col items-center">
+                    <span class="bg-slate-100 px-2 py-1 rounded text-[10px] font-bold mb-1">WASD</span>
+                    <span class="text-[9px]">MOVE</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="bg-slate-100 px-2 py-1 rounded text-[10px] font-bold mb-1">SPACE</span>
+                    <span class="text-[9px]">JUMP</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameover-screen" class="interactive absolute inset-0 flex items-center justify-center bg-slate-900/90 backdrop-blur-lg z-50 hidden opacity-0">
+        <div class="text-center text-white p-8">
+            <h2 class="text-6xl font-black text-white mb-2 tracking-tighter">OOF!</h2>
+            <p class="text-red-400 font-bold tracking-widest mb-10">THE ADVENTURE ENDED</p>
+            
+            <div class="mb-12">
+                <div class="text-slate-400 uppercase text-xs tracking-widest mb-2">Final Score</div>
+                <div id="final-score" class="text-7xl font-black text-yellow-400">0</div>
+            </div>
+            
+            <button id="btn-restart" class="bg-white text-slate-900 hover:bg-blue-50 font-black py-5 px-14 rounded-3xl shadow-2xl transform hover:scale-105 transition-all active:scale-95 text-xl uppercase tracking-widest">
+                Play Again
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+/**
+ * GAME CONFIGURATION & STATE
+ */
+const CONFIG = {
+    gravity: -45,
+    jumpForce: 18,
+    moveSpeed: 12,
+    acceleration: 80,
+    friction: 55,
+    airFriction: 15
+};
+
+const State = {
+    isRunning: false,
+    score: 0,
+    highScore: parseInt(localStorage.getItem('cubebros_highscore')) || 0,
+    playerName: "Hero",
+    keys: { a: false, d: false, w: false },
+    lastTime: 0
+};
+
+/**
+ * THREE.JS INITIALIZATION
+ */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x60a5fa);
+scene.fog = new THREE.Fog(0x60a5fa, 20, 60);
+
+const aspect = window.innerWidth / window.innerHeight;
+const viewSize = 20;
+const camera = new THREE.OrthographicCamera(
+    -viewSize * aspect / 2, viewSize * aspect / 2,
+    viewSize / 2, -viewSize / 2,
+    0.1, 1000
+);
+camera.position.set(0, 6, 20);
+camera.lookAt(0, 6, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.getElementById('game-canvas').appendChild(renderer.domElement);
+
+// Lighting
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+sun.position.set(10, 20, 15);
+sun.castShadow = true;
+sun.shadow.camera.left = -50;
+sun.shadow.camera.right = 50;
+sun.shadow.camera.top = 25;
+sun.shadow.camera.bottom = -25;
+scene.add(sun);
+
+/**
+ * GAME OBJECTS
+ */
+let player;
+let platforms = [];
+let coins = [];
+let enemies = [];
+const platformBoxes = [];
+
+const levelData = [
+    { x: 0, y: -2, w: 40, h: 4 },
+    { x: 45, y: -2, w: 15, h: 4 },
+    { x: 70, y: -2, w: 25, h: 4 },
+    { x: 105, y: 1, w: 8, h: 10 }, // Big wall
+    { x: 130, y: -2, w: 40, h: 4 },
+    
+    // Floating Steps
+    { x: 15, y: 4, w: 4, h: 1 },
+    { x: 24, y: 7, w: 4, h: 1 },
+    { x: 50, y: 3, w: 6, h: 1 },
+    { x: 80, y: 5, w: 8, h: 1 },
+    { x: 90, y: 9, w: 4, h: 1 },
+];
+
+function initLevel() {
+    // Cleanup
+    platforms.forEach(p => scene.remove(p));
+    coins.forEach(c => scene.remove(c.mesh));
+    enemies.forEach(e => scene.remove(e.mesh));
+    platforms = []; coins = []; enemies = []; platformBoxes.length = 0;
+
+    const geoPlat = new THREE.BoxGeometry(1, 1, 2);
+    const matPlat = new THREE.MeshStandardMaterial({ color: 0x475569 }); // Slate 600
+    const matTop = new THREE.MeshStandardMaterial({ color: 0x10b981 });  // Emerald 500
+
+    levelData.forEach(d => {
+        const mesh = new THREE.Mesh(geoPlat, matPlat);
+        mesh.scale.set(d.w, d.h, 1);
+        mesh.position.set(d.x, d.y, 0);
+        mesh.receiveShadow = true;
+        scene.add(mesh);
+        platforms.push(mesh);
+        platformBoxes.push(new THREE.Box3().setFromObject(mesh));
+
+        // Grass Top
+        const top = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 2.1), matTop);
+        top.scale.set(d.w, 0.4, 1);
+        top.position.set(d.x, d.y + d.h/2 + 0.1, 0);
+        scene.add(top);
+        platforms.push(top);
+
+        // Spawn items
+        if (Math.random() > 0.4) spawnCoins(d);
+        if (d.w > 8 && d.y <= 0) spawnEnemy(d);
+    });
+
+    if (!player) createPlayer();
+    resetPlayer();
+}
+
+function createPlayer() {
+    const geo = new THREE.BoxGeometry(1.2, 1.2, 1.2);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.4 });
+    player = {
+        mesh: new THREE.Mesh(geo, mat),
+        vx: 0, vy: 0,
+        w: 1.2, h: 1.2,
+        isGrounded: false
+    };
+    player.mesh.castShadow = true;
+    scene.add(player.mesh);
+}
+
+function resetPlayer() {
+    player.mesh.position.set(0, 5, 0);
+    player.vx = 0; player.vy = 0;
+    player.mesh.rotation.z = 0;
+    player.mesh.scale.set(1, 1, 1);
+}
+
+function spawnCoins(plat) {
+    const geo = new THREE.CylinderGeometry(0.5, 0.5, 0.15, 16);
+    const mat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.6, roughness: 0.2 });
+    const count = Math.floor(Math.random() * 3) + 1;
+    for(let i=0; i<count; i++) {
+        const mesh = new THREE.Mesh(geo, mat);
+        const x = (plat.x - plat.w/2) + (plat.w / (count+1)) * (i+1);
+        mesh.position.set(x, plat.y + plat.h/2 + 2, 0);
+        mesh.rotation.x = Math.PI / 2;
+        mesh.castShadow = true;
+        scene.add(mesh);
+        coins.push({ mesh, collected: false, offset: Math.random() * 10 });
+    }
+}
+
+function spawnEnemy(plat) {
+    const geo = new THREE.BoxGeometry(1.2, 1.2, 1.2);
+    const mat = new THREE.MeshStandardMaterial({ color: 0xef4444 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(plat.x, plat.y + plat.h/2 + 0.6, 0);
+    mesh.castShadow = true;
+    scene.add(mesh);
+    enemies.push({
+        mesh,
+        dir: 1,
+        speed: 4,
+        range: [plat.x - plat.w/2 + 0.6, plat.x + plat.w/2 - 0.6]
+    });
+}
+
+/**
+ * PHYSICS ENGINE
+ */
+function checkAABB(pos, w, h) {
+    const box = new THREE.Box3(
+        new THREE.Vector3(pos.x - w/2, pos.y - h/2, -0.5),
+        new THREE.Vector3(pos.x + w/2, pos.y + h/2, 0.5)
+    );
+    for (let p of platformBoxes) {
+        if (box.intersectsBox(p)) return p;
+    }
+    return null;
+}
+
+function updatePhysics(dt) {
+    if (!State.isRunning) return;
+
+    // Movement
+    if (State.keys.a) player.vx -= CONFIG.acceleration * dt;
+    if (State.keys.d) player.vx += CONFIG.acceleration * dt;
+
+    const friction = player.isGrounded ? CONFIG.friction : CONFIG.airFriction;
+    if (!State.keys.a && !State.keys.d) {
+        if (player.vx > 0) player.vx = Math.max(0, player.vx - friction * dt);
+        if (player.vx < 0) player.vx = Math.min(0, player.vx + friction * dt);
+    }
+    player.vx = Math.max(-CONFIG.moveSpeed, Math.min(CONFIG.moveSpeed, player.vx));
+
+    // Gravity
+    player.vy += CONFIG.gravity * dt;
+
+    // Resolve X
+    let nextX = player.mesh.position.x + player.vx * dt;
+    let hitX = checkAABB({x: nextX, y: player.mesh.position.y}, player.w, player.h);
+    if (hitX) {
+        if (player.vx > 0) nextX = hitX.min.x - player.w/2 - 0.01;
+        else if (player.vx < 0) nextX = hitX.max.x + player.w/2 + 0.01;
+        player.vx = 0;
+    }
+    player.mesh.position.x = nextX;
+
+    // Resolve Y
+    let nextY = player.mesh.position.y + player.vy * dt;
+    player.isGrounded = false;
+    let hitY = checkAABB({x: player.mesh.position.x, y: nextY}, player.w, player.h);
+    if (hitY) {
+        if (player.vy < 0) {
+            nextY = hitY.max.y + player.h/2;
+            player.isGrounded = true;
+            if (player.vy < -15) landingSquash();
+        } else {
+            nextY = hitY.min.y - player.h/2 - 0.01;
+        }
+        player.vy = 0;
+    }
+    player.mesh.position.y = nextY;
+
+    // Tilt visual
+    player.mesh.rotation.z = -player.vx * 0.05;
+
+    if (player.mesh.position.y < -12) triggerGameOver();
+}
+
+/**
+ * ANIMATIONS & EFFECTS
+ */
+function jumpStretch() {
+    anime.remove(player.mesh.scale);
+    player.mesh.scale.set(1, 1, 1);
+    anime({
+        targets: player.mesh.scale,
+        y: [1.6, 1], x: [0.6, 1], z: [0.6, 1],
+        duration: 500, easing: 'easeOutElastic(1, .5)'
+    });
+}
+
+function landingSquash() {
+    anime.remove(player.mesh.scale);
+    player.mesh.scale.set(1, 1, 1);
+    anime({
+        targets: player.mesh.scale,
+        y: [0.5, 1], x: [1.5, 1], z: [1.5, 1],
+        duration: 400, easing: 'easeOutElastic(1, .6)'
+    });
+}
+
+function collectEffect(coin) {
+    anime({
+        targets: coin.mesh.position,
+        y: coin.mesh.position.y + 4,
+        duration: 400, easing: 'easeOutQuart'
+    });
+    anime({
+        targets: coin.mesh.scale,
+        x: 0, y: 0, z: 0,
+        duration: 400, easing: 'easeInBack',
+        complete: () => scene.remove(coin.mesh)
+    });
+    anime({
+        targets: '#hud-score',
+        scale: [1.4, 1],
+        duration: 400, easing: 'easeOutBack'
+    });
+}
+
+/**
+ * CORE LOOP
+ */
+function update(time) {
+    requestAnimationFrame(update);
+    const dt = Math.min((time * 0.001 - State.lastTime), 0.1);
+    State.lastTime = time * 0.001;
+
+    updatePhysics(dt);
+
+    if (State.isRunning) {
+        // Camera Follow
+        const targetX = player.mesh.position.x + 5;
+        camera.position.x += (targetX - camera.position.x) * 4 * dt;
+
+        // Coins
+        coins.forEach(c => {
+            if (c.collected) return;
+            c.mesh.rotation.z += 2 * dt;
+            c.mesh.position.y += Math.sin(time * 0.005 + c.offset) * 0.01;
+            if (player.mesh.position.distanceTo(c.mesh.position) < 1.4) {
+                c.collected = true;
+                State.score += 100;
+                document.getElementById('hud-score').innerText = State.score.toString().padStart(4, '0');
+                collectEffect(c);
+            }
+        });
+
+        // Enemies
+        enemies.forEach(e => {
+            e.mesh.position.x += e.dir * e.speed * dt;
+            e.mesh.rotation.z -= e.dir * 4 * dt;
+            if (e.mesh.position.x > e.range[1] || e.mesh.position.x < e.range[0]) e.dir *= -1;
+            
+            const dist = player.mesh.position.distanceTo(e.mesh.position);
+            if (dist < 1.3) {
+                // Stomp check
+                if (player.vy < 0 && player.mesh.position.y > e.mesh.position.y + 0.6) {
+                    scene.remove(e.mesh);
+                    e.mesh.position.y = -999;
+                    player.vy = CONFIG.jumpForce * 0.7;
+                    State.score += 250;
+                    document.getElementById('hud-score').innerText = State.score.toString().padStart(4, '0');
+                } else {
+                    triggerGameOver();
+                }
+            }
+        });
+    }
+
+    renderer.render(scene, camera);
+}
+
+/**
+ * GAME FLOW & UI
+ */
+function triggerGameOver() {
+    if (!State.isRunning) return;
+    State.isRunning = false;
+    
+    if (State.score > State.highScore) {
+        State.highScore = State.score;
+        localStorage.setItem('cubebros_highscore', State.highScore);
+    }
+
+    document.getElementById('final-score').innerText = State.score;
+    const goScreen = document.getElementById('gameover-screen');
+    goScreen.classList.remove('hidden');
+    
+    anime({
+        targets: goScreen,
+        opacity: [0, 1],
+        duration: 600,
+        easing: 'linear'
+    });
+
+    // Death animation
+    anime({
+        targets: player.mesh.position,
+        y: [player.mesh.position.y + 3, -15],
+        duration: 1000,
+        easing: 'easeInBack'
+    });
+}
+
+function start() {
+    const nameInput = document.getElementById('player-name').value.trim();
+    State.playerName = nameInput || "Hero";
+    document.getElementById('hud-name').innerText = State.playerName;
+    document.getElementById('hud-highscore').innerText = `BEST: ${State.highScore}`;
+    
+    anime({
+        targets: '#start-screen',
+        opacity: 0,
+        scale: 0.9,
+        duration: 400,
+        easing: 'easeInQuad',
+        complete: () => {
+            document.getElementById('start-screen').classList.add('hidden');
+            const hud = document.getElementById('hud');
+            hud.classList.remove('hidden');
+            anime({ targets: hud, opacity: 1, duration: 500 });
+            
+            State.score = 0;
+            document.getElementById('hud-score').innerText = "0000";
+            initLevel();
+            State.isRunning = true;
+        }
+    });
+}
+
+// Event Listeners
+document.getElementById('btn-start').addEventListener('click', start);
+document.getElementById('btn-restart').addEventListener('click', () => {
+    location.reload(); // Simplest reset for this scale
+});
+
+window.addEventListener('keydown', (e) => {
+    const key = e.key.toLowerCase();
+    if (key === 'a') State.keys.a = true;
+    if (key === 'd') State.keys.d = true;
+    if (key === ' ' || key === 'w' || key === 'arrowup') {
+        if (player.isGrounded && State.isRunning) {
+            player.vy = CONFIG.jumpForce;
+            player.isGrounded = false;
+            jumpStretch();
+        }
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    const key = e.key.toLowerCase();
+    if (key === 'a') State.keys.a = false;
+    if (key === 'd') State.keys.d = false;
+    if (key === ' ' || key === 'w') {
+        if (player.vy > 0) player.vy *= 0.5; // Short jump logic
+    }
+});
+
+window.addEventListener('resize', () => {
+    const aspect = window.innerWidth / window.innerHeight;
+    camera.left = -viewSize * aspect / 2;
+    camera.right = viewSize * aspect / 2;
+    camera.top = viewSize / 2;
+    camera.bottom = -viewSize / 2;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Boot
+initLevel();
+requestAnimationFrame(update);
+</script>
+</body>
+</html>
