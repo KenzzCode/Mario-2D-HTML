@@ -11,15 +11,15 @@
     <!-- Tailwind CSS for modern, responsive UI -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { 
-            margin: 0; 
-            overflow: hidden; 
-            background: #60a5fa; 
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #60a5fa;
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
             touch-action: none;
         }
         #game-canvas { display: block; width: 100vw; height: 100vh; }
-        
+
         .ui-layer {
             position: absolute;
             inset: 0;
@@ -27,9 +27,9 @@
             display: flex;
             flex-direction: column;
         }
-        
+
         .interactive { pointer-events: auto; }
-        
+
         .pixel-text {
             font-family: 'monospace';
             text-transform: uppercase;
@@ -62,23 +62,29 @@
     </div>
 
     <!-- Start Screen -->
-    <div id="start-screen" class="interactive absolute inset-0 flex items-center justify-center bg-blue-600/40 backdrop-blur-xl z-50">
-        <div class="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center border-t-8 border-blue-500">
+    <div id="start-screen" class="interactive absolute inset-0 flex items-center justify-center bg-blue-600/40
+backdrop-blur-xl z-50">
+        <div class="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center border-t-8
+border-blue-500">
             <h1 class="text-5xl font-black text-slate-800 mb-2 tracking-tighter">CUBE BROS</h1>
             <p class="text-blue-500 font-bold text-sm tracking-widest mb-8">3D PLATFORMER ADVENTURE</p>
-            
+
             <div class="mb-6 text-left">
-                <label class="block text-slate-400 font-bold mb-2 text-[10px] uppercase tracking-widest" for="player-name">
+                <label class="block text-slate-400 font-bold mb-2 text-[10px] uppercase tracking-widest"
+for="player-name">
                     Identity
                 </label>
-                <input class="w-full px-5 py-4 rounded-2xl bg-slate-100 border-2 border-transparent focus:border-blue-500 focus:bg-white focus:outline-none text-lg font-bold text-slate-800 transition-all" 
+                <input class="w-full px-5 py-4 rounded-2xl bg-slate-100 border-2 border-transparent
+focus:border-blue-500 focus:bg-white focus:outline-none text-lg font-bold text-slate-800 transition-all"
                        id="player-name" type="text" placeholder="Your Name" maxlength="12">
             </div>
-            
-            <button id="btn-start" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-5 rounded-2xl shadow-lg shadow-blue-200 transform hover:-translate-y-1 transition-all active:scale-95 text-xl uppercase tracking-widest">
+
+            <button id="btn-start" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-5
+rounded-2xl shadow-lg shadow-blue-200 transform hover:-translate-y-1 transition-all active:scale-95 text-xl
+uppercase tracking-widest">
                 Start Game
             </button>
-            
+
             <div class="mt-8 flex justify-center gap-4 text-slate-400">
                 <div class="flex flex-col items-center">
                     <span class="bg-slate-100 px-2 py-1 rounded text-[10px] font-bold mb-1">WASD</span>
@@ -93,17 +99,20 @@
     </div>
 
     <!-- Game Over Screen -->
-    <div id="gameover-screen" class="interactive absolute inset-0 flex items-center justify-center bg-slate-900/90 backdrop-blur-lg z-50 hidden opacity-0">
+    <div id="gameover-screen" class="interactive absolute inset-0 flex items-center justify-center bg-slate-900/90
+backdrop-blur-lg z-50 hidden opacity-0">
         <div class="text-center text-white p-8">
             <h2 class="text-6xl font-black text-white mb-2 tracking-tighter">OOF!</h2>
             <p class="text-red-400 font-bold tracking-widest mb-10">THE ADVENTURE ENDED</p>
-            
+
             <div class="mb-12">
                 <div class="text-slate-400 uppercase text-xs tracking-widest mb-2">Final Score</div>
                 <div id="final-score" class="text-7xl font-black text-yellow-400">0</div>
             </div>
-            
-            <button id="btn-restart" class="bg-white text-slate-900 hover:bg-blue-50 font-black py-5 px-14 rounded-3xl shadow-2xl transform hover:scale-105 transition-all active:scale-95 text-xl uppercase tracking-widest">
+
+            <button id="btn-restart" class="bg-white text-slate-900 hover:bg-blue-50 font-black py-5 px-14
+rounded-3xl shadow-2xl transform hover:scale-105 transition-all active:scale-95 text-xl uppercase
+tracking-widest">
                 Play Again
             </button>
         </div>
@@ -181,7 +190,7 @@ const levelData = [
     { x: 70, y: -2, w: 25, h: 4 },
     { x: 105, y: 1, w: 8, h: 10 }, // Big wall
     { x: 130, y: -2, w: 40, h: 4 },
-    
+
     // Floating Steps
     { x: 15, y: 4, w: 4, h: 1 },
     { x: 24, y: 7, w: 4, h: 1 },
@@ -222,28 +231,145 @@ function initLevel() {
         if (d.w > 8 && d.y <= 0) spawnEnemy(d);
     });
 
-    if (!player) createPlayer();
+    if (!player) createNinjaPlayer();
     resetPlayer();
 }
 
-function createPlayer() {
-    const geo = new THREE.BoxGeometry(1.2, 1.2, 1.2);
-    const mat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.4 });
+function createNinjaPlayer() {
     player = {
-        mesh: new THREE.Mesh(geo, mat),
+        group: new THREE.Group(),
         vx: 0, vy: 0,
-        w: 1.2, h: 1.2,
-        isGrounded: false
+        w: 1, h: 1.8,
+        isGrounded: false,
+        direction: 1, // 1 = right, -1 = left
+        isRunning: false,
+        animTime: 0
     };
-    player.mesh.castShadow = true;
-    scene.add(player.mesh);
+
+    // Materials
+    const matBody = new THREE.MeshStandardMaterial({ color: 0x1a1a2e }); // Dark ninja outfit
+    const matSkin = new THREE.MeshStandardMaterial({ color: 0xffd5b4 });
+    const matBandana = new THREE.MeshStandardMaterial({ color: 0xe63946 }); // Red bandana
+    const matBelt = new THREE.MeshStandardMaterial({ color: 0x2d3436 });
+    const matKunai = new THREE.MeshStandardMaterial({ color: 0xc0c0c0, metalness: 0.8, roughness: 0.2 });
+
+    // Body (torso)
+    const bodyGeo = new THREE.BoxGeometry(0.8, 1, 0.5);
+    const body = new THREE.Mesh(bodyGeo, matBody);
+    body.position.y = 0;
+    body.castShadow = true;
+    player.group.add(body);
+
+    // Head
+    const headGeo = new THREE.BoxGeometry(0.7, 0.7, 0.6);
+    const head = new THREE.Mesh(headGeo, matSkin);
+    head.position.y = 0.85;
+    head.castShadow = true;
+    player.group.add(head);
+
+    // Bandana mask (covers lower face)
+    const maskGeo = new THREE.BoxGeometry(0.75, 0.3, 0.65);
+    const mask = new THREE.Mesh(maskGeo, matBandana);
+    mask.position.y = 0.65;
+    player.group.add(mask);
+
+    // Headband tails (flowing part)
+    const tailGeo = new THREE.BoxGeometry(0.3, 0.08, 0.1);
+    const tail1 = new THREE.Mesh(tailGeo, matBandana);
+    tail1.position.set(0.35, 1.15, 0.2);
+    tail1.rotation.z = 0.3;
+    player.group.add(tail1);
+
+    const tail2 = new THREE.Mesh(tailGeo, matBandana);
+    tail2.position.set(0.4, 1.1, 0.15);
+    tail2.rotation.z = 0.5;
+    player.group.add(tail2);
+
+    // Eyes (white rectangles for ninja look)
+    const eyeGeo = new THREE.BoxGeometry(0.15, 0.08, 0.05);
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+    const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+    leftEye.position.set(-0.15, 0.9, 0.32);
+    player.group.add(leftEye);
+
+    const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+    rightEye.position.set(0.15, 0.9, 0.32);
+    player.group.add(rightEye);
+
+    // Belt
+    const beltGeo = new THREE.BoxGeometry(0.85, 0.15, 0.55);
+    const belt = new THREE.Mesh(beltGeo, matBelt);
+    belt.position.y = -0.35;
+    player.group.add(belt);
+
+    // Arms
+    const armGeo = new THREE.BoxGeometry(0.2, 0.7, 0.2);
+
+    // Left arm
+    const leftArm = new THREE.Mesh(armGeo, matBody);
+    leftArm.position.set(-0.5, 0.1, 0);
+    leftArm.castShadow = true;
+    player.group.add(leftArm);
+    player.leftArm = leftArm;
+
+    // Right arm (holds kunai)
+    const rightArm = new THREE.Mesh(armGeo, matBody);
+    rightArm.position.set(0.5, 0.1, 0);
+    rightArm.castShadow = true;
+    player.group.add(rightArm);
+    player.rightArm = rightArm;
+
+    // Kunai in hand
+    const kunaiGeo = new THREE.ConeGeometry(0.05, 0.4, 4);
+    const kunai = new THREE.Mesh(kunaiGeo, matKunai);
+    kunai.position.set(0.65, 0, 0.1);
+    kunai.rotation.z = -0.5;
+    player.group.add(kunai);
+    player.kunai = kunai;
+
+    // Legs
+    const legGeo = new THREE.BoxGeometry(0.25, 0.7, 0.25);
+
+    // Left leg
+    const leftLeg = new THREE.Mesh(legGeo, matBody);
+    leftLeg.position.set(-0.22, -0.9, 0);
+    leftLeg.castShadow = true;
+    player.group.add(leftLeg);
+    player.leftLeg = leftLeg;
+
+    // Right leg
+    const rightLeg = new THREE.Mesh(legGeo, matBody);
+    rightLeg.position.set(0.22, -0.9, 0);
+    rightLeg.castShadow = true;
+    player.group.add(rightLeg);
+    player.rightLeg = rightLeg;
+
+    // Sneakers
+    const shoeGeo = new THREE.BoxGeometry(0.3, 0.15, 0.35);
+    const shoeMat = new THREE.MeshStandardMaterial({ color: 0x2d3436 });
+
+    const leftShoe = new THREE.Mesh(shoeGeo, shoeMat);
+    leftShoe.position.set(-0.22, -1.3, 0.05);
+    player.group.add(leftShoe);
+    player.leftShoe = leftShoe;
+
+    const rightShoe = new THREE.Mesh(shoeGeo, shoeMat);
+    rightShoe.position.set(0.22, -1.3, 0.05);
+    player.group.add(rightShoe);
+    player.rightShoe = rightShoe;
+
+    scene.add(player.group);
 }
 
 function resetPlayer() {
-    player.mesh.position.set(0, 5, 0);
+    player.group.position.set(0, 5, 0);
     player.vx = 0; player.vy = 0;
-    player.mesh.rotation.z = 0;
-    player.mesh.scale.set(1, 1, 1);
+    player.group.rotation.z = 0;
+    player.direction = 1;
+    player.leftArm.rotation.z = 0;
+    player.rightArm.rotation.z = 0;
+    player.leftLeg.rotation.z = 0;
+    player.rightLeg.rotation.z = 0;
 }
 
 function spawnCoins(plat) {
@@ -294,8 +420,9 @@ function updatePhysics(dt) {
     if (!State.isRunning) return;
 
     // Movement
-    if (State.keys.a) player.vx -= CONFIG.acceleration * dt;
-    if (State.keys.d) player.vx += CONFIG.acceleration * dt;
+    if (State.keys.a) { player.vx -= CONFIG.acceleration * dt; player.direction = -1; player.isRunning = true; }
+    if (State.keys.d) { player.vx += CONFIG.acceleration * dt; player.direction = 1; player.isRunning = true; }
+    if (!State.keys.a && !State.keys.d) player.isRunning = false;
 
     const friction = player.isGrounded ? CONFIG.friction : CONFIG.airFriction;
     if (!State.keys.a && !State.keys.d) {
@@ -308,19 +435,19 @@ function updatePhysics(dt) {
     player.vy += CONFIG.gravity * dt;
 
     // Resolve X
-    let nextX = player.mesh.position.x + player.vx * dt;
-    let hitX = checkAABB({x: nextX, y: player.mesh.position.y}, player.w, player.h);
+    let nextX = player.group.position.x + player.vx * dt;
+    let hitX = checkAABB({x: nextX, y: player.group.position.y}, player.w, player.h);
     if (hitX) {
         if (player.vx > 0) nextX = hitX.min.x - player.w/2 - 0.01;
         else if (player.vx < 0) nextX = hitX.max.x + player.w/2 + 0.01;
         player.vx = 0;
     }
-    player.mesh.position.x = nextX;
+    player.group.position.x = nextX;
 
     // Resolve Y
-    let nextY = player.mesh.position.y + player.vy * dt;
+    let nextY = player.group.position.y + player.vy * dt;
     player.isGrounded = false;
-    let hitY = checkAABB({x: player.mesh.position.x, y: nextY}, player.w, player.h);
+    let hitY = checkAABB({x: player.group.position.x, y: nextY}, player.w, player.h);
     if (hitY) {
         if (player.vy < 0) {
             nextY = hitY.max.y + player.h/2;
@@ -331,34 +458,62 @@ function updatePhysics(dt) {
         }
         player.vy = 0;
     }
-    player.mesh.position.y = nextY;
+    player.group.position.y = nextY;
 
-    // Tilt visual
-    player.mesh.rotation.z = -player.vx * 0.05;
+    // Ninja Running Animation
+    if (player.isRunning && player.isGrounded) {
+        player.animTime += dt * 12;
+        player.leftLeg.rotation.x = Math.sin(player.animTime) * 0.8;
+        player.rightLeg.rotation.x = Math.sin(player.animTime + Math.PI) * 0.8;
+        player.leftArm.rotation.x = Math.sin(player.animTime + Math.PI) * 0.5;
+        player.rightArm.rotation.x = Math.sin(player.animTime) * 0.5;
+    } else if (!player.isGrounded) {
+        // Air pose - spread limbs
+        player.leftLeg.rotation.x = 0.3;
+        player.rightLeg.rotation.x = -0.3;
+        player.leftArm.rotation.x = -0.5;
+        player.rightArm.rotation.x = -0.5;
+    } else {
+        // Idle pose
+        player.leftLeg.rotation.x = 0;
+        player.rightLeg.rotation.x = 0;
+        player.leftArm.rotation.x = 0;
+        player.rightArm.rotation.x = 0;
+    }
 
-    if (player.mesh.position.y < -12) triggerGameOver();
+    // Flip ninja based on direction
+    player.group.rotation.y = player.direction === 1 ? 0 : Math.PI;
+
+    // Tilt visual when moving fast
+    player.group.rotation.z = -player.vx * 0.02;
+
+    if (player.group.position.y < -12) triggerGameOver();
 }
 
 /**
  * ANIMATIONS & EFFECTS
  */
 function jumpStretch() {
-    anime.remove(player.mesh.scale);
-    player.mesh.scale.set(1, 1, 1);
+    // Ninja jump animation
     anime({
-        targets: player.mesh.scale,
-        y: [1.6, 1], x: [0.6, 1], z: [0.6, 1],
-        duration: 500, easing: 'easeOutElastic(1, .5)'
+        targets: player.group.scale,
+        y: [1.3, 0.85], x: [0.8, 1.1],
+        duration: 300, easing: 'easeOutQuad',
+        complete: () => {
+            anime({
+                targets: player.group.scale,
+                y: [0.85, 1], x: [1.1, 1],
+                duration: 200, easing: 'easeOutQuad'
+            });
+        }
     });
 }
 
 function landingSquash() {
-    anime.remove(player.mesh.scale);
-    player.mesh.scale.set(1, 1, 1);
     anime({
-        targets: player.mesh.scale,
-        y: [0.5, 1], x: [1.5, 1], z: [1.5, 1],
-        duration: 400, easing: 'easeOutElastic(1, .6)'
+        targets: player.group.scale,
+        y: [0.7, 1], x: [1.3, 1],
+        duration: 300, easing: 'easeOutElastic(1, .5)'
     });
 }
 
@@ -393,7 +548,7 @@ function update(time) {
 
     if (State.isRunning) {
         // Camera Follow
-        const targetX = player.mesh.position.x + 5;
+        const targetX = player.group.position.x + 5;
         camera.position.x += (targetX - camera.position.x) * 4 * dt;
 
         // Coins
@@ -401,7 +556,7 @@ function update(time) {
             if (c.collected) return;
             c.mesh.rotation.z += 2 * dt;
             c.mesh.position.y += Math.sin(time * 0.005 + c.offset) * 0.01;
-            if (player.mesh.position.distanceTo(c.mesh.position) < 1.4) {
+            if (player.group.position.distanceTo(c.mesh.position) < 1.4) {
                 c.collected = true;
                 State.score += 100;
                 document.getElementById('hud-score').innerText = State.score.toString().padStart(4, '0');
@@ -414,11 +569,11 @@ function update(time) {
             e.mesh.position.x += e.dir * e.speed * dt;
             e.mesh.rotation.z -= e.dir * 4 * dt;
             if (e.mesh.position.x > e.range[1] || e.mesh.position.x < e.range[0]) e.dir *= -1;
-            
-            const dist = player.mesh.position.distanceTo(e.mesh.position);
+
+            const dist = player.group.position.distanceTo(e.mesh.position);
             if (dist < 1.3) {
                 // Stomp check
-                if (player.vy < 0 && player.mesh.position.y > e.mesh.position.y + 0.6) {
+                if (player.vy < 0 && player.group.position.y > e.mesh.position.y + 0.6) {
                     scene.remove(e.mesh);
                     e.mesh.position.y = -999;
                     player.vy = CONFIG.jumpForce * 0.7;
@@ -440,7 +595,7 @@ function update(time) {
 function triggerGameOver() {
     if (!State.isRunning) return;
     State.isRunning = false;
-    
+
     if (State.score > State.highScore) {
         State.highScore = State.score;
         localStorage.setItem('cubebros_highscore', State.highScore);
@@ -449,7 +604,7 @@ function triggerGameOver() {
     document.getElementById('final-score').innerText = State.score;
     const goScreen = document.getElementById('gameover-screen');
     goScreen.classList.remove('hidden');
-    
+
     anime({
         targets: goScreen,
         opacity: [0, 1],
@@ -459,8 +614,8 @@ function triggerGameOver() {
 
     // Death animation
     anime({
-        targets: player.mesh.position,
-        y: [player.mesh.position.y + 3, -15],
+        targets: player.group.position,
+        y: [player.group.position.y + 3, -15],
         duration: 1000,
         easing: 'easeInBack'
     });
@@ -471,7 +626,7 @@ function start() {
     State.playerName = nameInput || "Hero";
     document.getElementById('hud-name').innerText = State.playerName;
     document.getElementById('hud-highscore').innerText = `BEST: ${State.highScore}`;
-    
+
     anime({
         targets: '#start-screen',
         opacity: 0,
@@ -483,7 +638,7 @@ function start() {
             const hud = document.getElementById('hud');
             hud.classList.remove('hidden');
             anime({ targets: hud, opacity: 1, duration: 500 });
-            
+
             State.score = 0;
             document.getElementById('hud-score').innerText = "0000";
             initLevel();
@@ -536,3 +691,4 @@ requestAnimationFrame(update);
 </script>
 </body>
 </html>
+```
