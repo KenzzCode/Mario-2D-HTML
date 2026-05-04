@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Super Cube Bros - Ninja Edition</title>
+    <title>Super Cube Bros - Turtle Edition</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -23,7 +23,7 @@
     <!-- HUD -->
     <div id="hud" class="flex justify-between items-start p-6 text-white font-bold opacity-0 hidden">
         <div class="bg-black/20 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-xl">
-            <div class="text-xs uppercase tracking-widest text-blue-200 mb-1">Shinobi</div>
+            <div class="text-xs uppercase tracking-widest text-blue-200 mb-1">Kura-Kura</div>
             <div class="text-xl" id="hud-name">---</div>
         </div>
         <div class="text-right bg-black/20 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-xl">
@@ -37,10 +37,10 @@
     <div id="start-screen" class="interactive absolute inset-0 flex items-center justify-center bg-blue-600/40 backdrop-blur-xl z-50">
         <div class="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center border-t-8 border-blue-500">
             <h1 class="text-5xl font-black text-slate-800 mb-2 tracking-tighter">CUBE BROS</h1>
-            <p class="text-blue-500 font-bold text-sm tracking-widest mb-8">NINJA GAIDEN MODE</p>
+            <p class="text-blue-500 font-bold text-sm tracking-widest mb-8">TURTLE EDITION</p>
             <div class="mb-6 text-left">
                 <label class="block text-slate-400 font-bold mb-2 text-[10px] uppercase tracking-widest">Identity</label>
-                <input class="w-full px-5 py-4 rounded-2xl bg-slate-100 border-2 border-transparent focus:border-blue-500 focus:bg-white focus:outline-none text-lg font-bold text-slate-800 transition-all" id="player-name" type="text" placeholder="Ninja Name" maxlength="12">
+                <input class="w-full px-5 py-4 rounded-2xl bg-slate-100 border-2 border-transparent focus:border-blue-500 focus:bg-white focus:outline-none text-lg font-bold text-slate-800 transition-all" id="player-name" type="text" placeholder="Turtle Name" maxlength="12">
             </div>
             <button id="btn-start" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-5 rounded-2xl shadow-lg shadow-blue-200 transform hover:-translate-y-1 transition-all active:scale-95 text-xl uppercase tracking-widest">Start Mission</button>
             <div class="mt-8 flex justify-center gap-4 text-slate-400">
@@ -60,7 +60,7 @@
     <div id="gameover-screen" class="interactive absolute inset-0 flex items-center justify-center bg-slate-900/90 backdrop-blur-lg z-50 hidden opacity-0">
         <div class="text-center text-white p-8">
             <h2 class="text-6xl font-black text-white mb-2 tracking-tighter">OOF!</h2>
-            <p class="text-red-400 font-bold tracking-widest mb-10">MISSION FAILED</p>
+            <p class="text-red-400 font-bold tracking-widest mb-10">OOPS!</p>
             <div class="mb-12">
                 <div class="text-slate-400 uppercase text-xs tracking-widest mb-2">Final Score</div>
                 <div id="final-score" class="text-7xl font-black text-yellow-400">0</div>
@@ -85,7 +85,7 @@ const State = {
     isRunning: false,
     score: 0,
     highScore: parseInt(localStorage.getItem('cubebros_highscore')) || 0,
-    playerName: "Ninja",
+    playerName: "Kura",
     keys: { a: false, d: false, w: false }, // Fixed WASD keys
     lastTime: 0
 };
@@ -161,50 +161,71 @@ function initLevel() {
         if (d.w > 8 && d.y <= 0) spawnEnemy(d);
     });
 
-    if (!player) createNinjaPlayer();
+    if (!player) createTurtlePlayer();
     resetPlayer();
 }
 
-function createNinjaPlayer() {
+function createTurtlePlayer() {
     player = {
         group: new THREE.Group(),
-        vx: 0, vy: 0, w: 1, h: 1.8,
+        vx: 0, vy: 0, w: 1, h: 1.2,
         isGrounded: false, direction: 1, isRunning: false, animTime: 0
     };
 
-    const matBody = new THREE.MeshStandardMaterial({ color: 0x1a1a2e });
-    const matSkin = new THREE.MeshStandardMaterial({ color: 0xffd5b4 });
-    const matBandana = new THREE.MeshStandardMaterial({ color: 0xe63946 });
+    const matShell = new THREE.MeshStandardMaterial({ color: 0x2d5a27 });
+    const matSkin = new THREE.MeshStandardMaterial({ color: 0x8fbc8f });
+    const matShellUnder = new THREE.MeshStandardMaterial({ color: 0xf5deb3 });
 
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1, 0.5), matBody);
-    body.castShadow = true;
-    player.group.add(body);
+    // Shell (body) - using sphere for turtle shell
+    const shell = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 12, 0, Math.PI * 2, 0, Math.PI/2), matShell);
+    shell.rotation.x = Math.PI;
+    shell.position.y = 0.2;
+    shell.castShadow = true;
+    player.group.add(shell);
 
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.6), matSkin);
-    head.position.y = 0.85;
+    // Shell underside
+    const shellUnder = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.15, 16), matShellUnder);
+    shellUnder.position.y = 0.05;
+    player.group.add(shellUnder);
+
+    // Head
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 12), matSkin);
+    head.position.set(0, 0.35, 0.4);
     player.group.add(head);
 
-    const mask = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.3, 0.65), matBandana);
-    mask.position.y = 0.65;
-    player.group.add(mask);
+    // Eyes
+    const matEye = new THREE.MeshStandardMaterial({ color: 0x000000 });
+    const eyeGeo = new THREE.SphereGeometry(0.06, 8, 8);
+    player.leftEye = new THREE.Mesh(eyeGeo, matEye);
+    player.leftEye.position.set(-0.1, 0.4, 0.55);
+    player.group.add(player.leftEye);
 
-    const armGeo = new THREE.BoxGeometry(0.2, 0.7, 0.2);
-    player.leftArm = new THREE.Mesh(armGeo, matBody);
-    player.leftArm.position.set(-0.5, 0.1, 0);
-    player.group.add(player.leftArm);
+    player.rightEye = new THREE.Mesh(eyeGeo, matEye);
+    player.rightEye.position.set(0.1, 0.4, 0.55);
+    player.group.add(player.rightEye);
 
-    player.rightArm = new THREE.Mesh(armGeo, matBody);
-    player.rightArm.position.set(0.5, 0.1, 0);
-    player.group.add(player.rightArm);
+    // Legs (4 legs)
+    const legGeo = new THREE.CapsuleGeometry(0.08, 0.2, 4, 8);
+    player.legs = [];
+    const legPositions = [
+        { x: -0.35, z: 0.25, rot: Math.PI/4 },
+        { x: 0.35, z: 0.25, rot: -Math.PI/4 },
+        { x: -0.35, z: -0.25, rot: -Math.PI/4 },
+        { x: 0.35, z: -0.25, rot: Math.PI/4 }
+    ];
+    legPositions.forEach((pos, i) => {
+        const leg = new THREE.Mesh(legGeo, matSkin);
+        leg.position.set(pos.x, -0.15, pos.z);
+        leg.rotation.z = pos.rot;
+        player.legs.push(leg);
+        player.group.add(leg);
+    });
 
-    const legGeo = new THREE.BoxGeometry(0.25, 0.7, 0.25);
-    player.leftLeg = new THREE.Mesh(legGeo, matBody);
-    player.leftLeg.position.set(-0.22, -0.85, 0);
-    player.group.add(player.leftLeg);
-
-    player.rightLeg = new THREE.Mesh(legGeo, matBody);
-    player.rightLeg.position.set(0.22, -0.85, 0);
-    player.group.add(player.rightLeg);
+    // Tail
+    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.25, 8), matSkin);
+    tail.position.set(0, -0.1, -0.45);
+    tail.rotation.x = Math.PI / 2;
+    player.group.add(tail);
 
     scene.add(player.group);
 }
@@ -283,11 +304,11 @@ function updatePhysics(dt) {
     // Animations
     if (player.isRunning && player.isGrounded) {
         player.animTime += dt * 15;
-        player.leftLeg.rotation.x = Math.sin(player.animTime) * 0.8;
-        player.rightLeg.rotation.x = Math.sin(player.animTime + Math.PI) * 0.8;
+        player.legs.forEach((leg, i) => {
+            leg.rotation.x = Math.sin(player.animTime + (i % 2) * Math.PI) * 0.5;
+        });
     } else {
-        player.leftLeg.rotation.x = 0;
-        player.rightLeg.rotation.x = 0;
+        player.legs.forEach(leg => leg.rotation.x = 0);
     }
     player.group.rotation.y = player.direction === 1 ? 0 : Math.PI;
 
